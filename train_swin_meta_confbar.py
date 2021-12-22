@@ -18,6 +18,7 @@ from torchvision.transforms import transforms
 import random
 import numpy as np
 from config import Configs
+from utils import train_meta_confbar_regression_loop
 
 # from torchsummary import summary
 config=Configs()
@@ -71,32 +72,34 @@ for e in range(config.epochs):
     rmse_metric.reset()
     binary_acc_metric.reset()
     log_dict={}
-    iter_loop=tqdm(enumerate(train_loader),total=len(train_loader))
-    # running_loss=0
-    for ii,(img_batch,meta_batch,label_batch,conf_label_batch) in iter_loop:
-        optimizer.zero_grad(set_to_none=True)
-        img_batch=img_batch.cuda()
-        label_batch=label_batch.cuda()
-        meta_batch=meta_batch.cuda()
-        conf_label_batch=conf_label_batch.cuda()
+    # iter_loop=tqdm(enumerate(train_loader),total=len(train_loader))
+    # # running_loss=0
+    # for ii,(img_batch,meta_batch,label_batch,conf_label_batch) in iter_loop:
+    #     optimizer.zero_grad(set_to_none=True)
+    #     img_batch=img_batch.cuda()
+    #     label_batch=label_batch.cuda()
+    #     meta_batch=meta_batch.cuda()
+    #     conf_label_batch=conf_label_batch.cuda()
         
-        # print(img_batch.shape,label_batch.shape,meta_batch.shape)
-        output_reg,output_conf=model(img_batch,meta_batch)
-        label_batch=label_batch.view(output_reg.shape)
-        loss_reg=regression_criterion(output_reg,label_batch)
-        loss_conf=confidence_criterion(output_conf,conf_label_batch)
-        loss=loss_reg+loss_conf
-        loss.backward()
-        optimizer.step()
-        running_loss.update(batch_loss=loss)
-        rmse_metric.update(y_pred=output_reg,y_true=label_batch)
-        binary_acc_metric.update(y_pred=output_conf,y_true=conf_label_batch)
-        iter_loop.set_description('TRAIN LOOP E: '+str(e))
-        iter_loop.set_postfix({
-            running_loss.name:running_loss.get_value(),
-            rmse_metric.name:rmse_metric.get_value()*100,
-            binary_acc_metric.name:binary_acc_metric.get_value()
-            })
+    #     # print(img_batch.shape,label_batch.shape,meta_batch.shape)
+    #     output_reg,output_conf=model(img_batch,meta_batch)
+    #     label_batch=label_batch.view(output_reg.shape)
+    #     loss_reg=regression_criterion(output_reg,label_batch)
+    #     loss_conf=confidence_criterion(output_conf,conf_label_batch)
+    #     loss=loss_reg+loss_conf
+    #     loss.backward()
+    #     optimizer.step()
+    #     running_loss.update(batch_loss=loss)
+    #     rmse_metric.update(y_pred=output_reg,y_true=label_batch)
+    #     binary_acc_metric.update(y_pred=output_conf,y_true=conf_label_batch)
+    #     iter_loop.set_description('TRAIN LOOP E: '+str(e))
+    #     iter_loop.set_postfix({
+    #         running_loss.name:running_loss.get_value(),
+    #         rmse_metric.name:rmse_metric.get_value()*100,
+    #         binary_acc_metric.name:binary_acc_metric.get_value()
+    #         })
+    train_meta_confbar_regression_loop(model,train_loader,optimizer,regression_criterion,confidence_criterion,running_loss,rmse_metric,binary_acc_metric,e,device,True)
+    
     log_dict['loss/train']=running_loss.get_value()
     log_dict['rmse/train']=rmse_metric.get_value()*100
     log_dict['binary_acc/train']=binary_acc_metric.get_value()
@@ -106,26 +109,28 @@ for e in range(config.epochs):
     rmse_metric.reset()
     binary_acc_metric.reset()
     with torch.no_grad():
-        iter_loop=tqdm(enumerate(valid_loader),total=len(valid_loader))
-        for ii,(img_batch,meta_batch,label_batch,conf_label_batch) in iter_loop:
-            img_batch=img_batch.cuda()
-            label_batch=label_batch.cuda()
-            conf_label_batch=conf_label_batch.cuda()
-            meta_batch=meta_batch.cuda()
-            output_reg,output_conf=model(img_batch,meta_batch)
-            label_batch=label_batch.view(output_reg.shape)
-            loss_reg=regression_criterion(output_reg,label_batch)
-            loss_conf=confidence_criterion(output_conf,conf_label_batch)
-            loss=loss_reg+loss_conf
-            running_loss.update(batch_loss=loss)
-            rmse_metric.update(y_pred=output_reg,y_true=label_batch)
-            binary_acc_metric.update(y_pred=output_conf,y_true=conf_label_batch)
-            iter_loop.set_description('VALID LOOP E: '+str(e))
-            iter_loop.set_postfix({
-                running_loss.name:running_loss.get_value(),
-                rmse_metric.name:rmse_metric.get_value()*100,
-                binary_acc_metric.name:binary_acc_metric.get_value()
-            })
+        train_meta_confbar_regression_loop(model,valid_loader,optimizer,regression_criterion,confidence_criterion,running_loss,rmse_metric,binary_acc_metric,e,device,False)
+        
+        # iter_loop=tqdm(enumerate(valid_loader),total=len(valid_loader))
+        # for ii,(img_batch,meta_batch,label_batch,conf_label_batch) in iter_loop:
+        #     img_batch=img_batch.cuda()
+        #     label_batch=label_batch.cuda()
+        #     conf_label_batch=conf_label_batch.cuda()
+        #     meta_batch=meta_batch.cuda()
+        #     output_reg,output_conf=model(img_batch,meta_batch)
+        #     label_batch=label_batch.view(output_reg.shape)
+        #     loss_reg=regression_criterion(output_reg,label_batch)
+        #     loss_conf=confidence_criterion(output_conf,conf_label_batch)
+        #     loss=loss_reg+loss_conf
+        #     running_loss.update(batch_loss=loss)
+        #     rmse_metric.update(y_pred=output_reg,y_true=label_batch)
+        #     binary_acc_metric.update(y_pred=output_conf,y_true=conf_label_batch)
+        #     iter_loop.set_description('VALID LOOP E: '+str(e))
+        #     iter_loop.set_postfix({
+        #         running_loss.name:running_loss.get_value(),
+        #         rmse_metric.name:rmse_metric.get_value()*100,
+        #         binary_acc_metric.name:binary_acc_metric.get_value()
+        #     })
         ckpt_callback.check_and_save(model,running_loss.get_value())   
     schedular.step()
     log_dict['loss/valid']=running_loss.get_value()
