@@ -1,61 +1,61 @@
 import os
 import json
 
-SEED=999
-EXP_NUM=5
-CKPT_DIR='checkpoints'
-IMG_DIR='Dataset/train'
-IMG_META_DIR='Dataset/train.csv'
+# SEED=999
+# EXP_NUM=5
+# CKPT_DIR='checkpoints'
+# IMG_DIR='Dataset/train'
+# IMG_META_DIR='Dataset/train.csv'
 
-IMG_WIDTH=224
-IMG_HEIGHT=224
-BATCH_SIZE=64
-SHUFFLE=True
-NUM_WORKERS=8
-PIN_MEMORY=True
-EPOCHS=40
-LR=3e-6
-TRAIN_SPLIT=0.8
-LOW_AUG_BOUND=0.5
-HIGH_AUG_BOUND=0.6
-LOSS_MAGNIFIER=3
-AUGMENTATION=True
-WITH_META=True
-WITH_CONF_BAR=True
-SCHEDULAR='step'
-# BACKBONE='small-swin'
-STEP_SIZE=5
-STEP_GAMMA=0.1
-# MODEL_NAME='pawpularity_'+BACKBONE+'_withmeta_withconfbar_'+str(EXP_NUM)+'.pt'
-# BACKBONE_WEIGHTS='checkpoints/pawpularity_inceptionv3_backbone_2.pt'
-# device='cuda' if torch.cuda.is_available() else 'cpu'
-config_dict={
-    'experiment_number':EXP_NUM,
-    # 'checkpoint_name':MODEL_NAME,
-    'random_seed':SEED,
-    'low_augmentation_bounds':LOW_AUG_BOUND,
-    'high_augmentation_bounds':HIGH_AUG_BOUND,
-    'image_dir':IMG_DIR,
-    'img_meta_file':IMG_META_DIR,
-    'image_width':IMG_WIDTH,
-    'image_height':IMG_HEIGHT,
-    'batch_size':BATCH_SIZE,
-    'shuffle':SHUFFLE,
-    'number_workers':NUM_WORKERS,
-    'pin_memory':PIN_MEMORY,
-    'epochs':EPOCHS,
-    'learning_rate':LR,
-    'train_split':TRAIN_SPLIT,
-    'augmentation':AUGMENTATION,
-    'with_conf_bar':WITH_CONF_BAR,
-    # 'backbone':BACKBONE,
-    # 'backbone_weights':BACKBONE_WEIGHTS,
-    'loss_magnifier':LOSS_MAGNIFIER,
-    'with_meta':WITH_META,
-    'schedular':SCHEDULAR,
-    'step_size':STEP_SIZE,
-    'step_gamma':STEP_GAMMA
-}
+# IMG_WIDTH=224
+# IMG_HEIGHT=224
+# BATCH_SIZE=64
+# SHUFFLE=True
+# NUM_WORKERS=8
+# PIN_MEMORY=True
+# EPOCHS=40
+# LR=3e-6
+# TRAIN_SPLIT=0.8
+# LOW_AUG_BOUND=0.5
+# HIGH_AUG_BOUND=0.6
+# LOSS_MAGNIFIER=3
+# AUGMENTATION=True
+# WITH_META=True
+# WITH_CONF_BAR=True
+# SCHEDULAR='step'
+# # BACKBONE='small-swin'
+# STEP_SIZE=5
+# STEP_GAMMA=0.1
+# # MODEL_NAME='pawpularity_'+BACKBONE+'_withmeta_withconfbar_'+str(EXP_NUM)+'.pt'
+# # BACKBONE_WEIGHTS='checkpoints/pawpularity_inceptionv3_backbone_2.pt'
+# # device='cuda' if torch.cuda.is_available() else 'cpu'
+# config_dict={
+#     'experiment_number':EXP_NUM,
+#     # 'checkpoint_name':MODEL_NAME,
+#     'random_seed':SEED,
+#     'low_augmentation_bounds':LOW_AUG_BOUND,
+#     'high_augmentation_bounds':HIGH_AUG_BOUND,
+#     'image_dir':IMG_DIR,
+#     'img_meta_file':IMG_META_DIR,
+#     'image_width':IMG_WIDTH,
+#     'image_height':IMG_HEIGHT,
+#     'batch_size':BATCH_SIZE,
+#     'shuffle':SHUFFLE,
+#     'number_workers':NUM_WORKERS,
+#     'pin_memory':PIN_MEMORY,
+#     'epochs':EPOCHS,
+#     'learning_rate':LR,
+#     'train_split':TRAIN_SPLIT,
+#     'augmentation':AUGMENTATION,
+#     'with_conf_bar':WITH_CONF_BAR,
+#     # 'backbone':BACKBONE,
+#     # 'backbone_weights':BACKBONE_WEIGHTS,
+#     'loss_magnifier':LOSS_MAGNIFIER,
+#     'with_meta':WITH_META,
+#     'schedular':SCHEDULAR,
+#     'step_size':STEP_SIZE,
+#     'step_gamma':STEP_GAMMA
+# }
 
 class Configs():
     def __init__(self) -> None:
