@@ -3,7 +3,7 @@ from torch.functional import split
 from torch.utils.data import Dataset
 import os
 import pandas as pd
-from sklearn.model_selection import train_test_split,KFold,StratifiedKFold
+from sklearn.model_selection import train_test_split,KFold,StratifiedKFold,StratifiedGroupKFold
 from augmentation import get_low_aug_transform_pipeline, get_transform_pipeline,get_torch_transform_pipeline
 import cv2
 import numpy as np
@@ -219,22 +219,22 @@ class PawpularityDatasetSplitter():
         self.with_meta=with_meta
         self.data_df.iloc[:,-1]=self.normalize(self.data_df.iloc[:,-1])
         # print(self.Y.describe())
-        self.k_folder=StratifiedKFold()
+        self.k_folder=KFold()
         self.with_conf_bar=with_conf_bar
         return 
     def generate_train_valid_dataset(self,train_split=0.8):
-        train_idx,valid_idx=train_test_split(np.arange(self.data_df.shape[0]),train_size=train_split,stratify=self.data_df.iloc[:,-1])
-        # for train_idx,valid_idx in self.k_folder.split(self.data_df):
-        if(self.with_meta):
-            if(self.with_conf_bar):
-                yield PawpularityWithMetaWithConfidenceBarDataset(self.img_dir,self.data_df.iloc[train_idx],self.transform_dict.get('train',None)),PawpularityWithMetaWithConfidenceBarDataset(self.img_dir,self.data_df.iloc[valid_idx],self.transform_dict.get('valid',None))
+        # train_idx,valid_idx=train_test_split(np.arange(self.data_df.shape[0]),train_size=train_split,stratify=self.data_df.iloc[:,-1])
+        for train_idx,valid_idx in self.k_folder.split(self.data_df):
+            if(self.with_meta):
+                if(self.with_conf_bar):
+                    yield PawpularityWithMetaWithConfidenceBarDataset(self.img_dir,self.data_df.iloc[train_idx],self.transform_dict.get('train',None)),PawpularityWithMetaWithConfidenceBarDataset(self.img_dir,self.data_df.iloc[valid_idx],self.transform_dict.get('valid',None))
+                else:
+                    yield PawpularityWithMetaDataset(self.img_dir,self.data_df.iloc[train_idx],self.transform_dict.get('train',None)),PawpularityWithMetaDataset(self.img_dir,self.data_df.iloc[valid_idx],self.transform_dict.get('valid',None))
             else:
-                yield PawpularityWithMetaDataset(self.img_dir,self.data_df.iloc[train_idx],self.transform_dict.get('train',None)),PawpularityWithMetaDataset(self.img_dir,self.data_df.iloc[valid_idx],self.transform_dict.get('valid',None))
-        else:
-            if(self.with_conf_bar):
-                yield PawpularityWithConfidenceBarDataset(self.img_dir,self.data_df.iloc[train_idx],self.transform_dict.get('train',None)),PawpularityWithConfidenceBarDataset(self.img_dir,self.data_df.iloc[valid_idx],self.transform_dict.get('valid',None))
-            else:
-                yield PawpularityDataset(self.img_dir,self.data_df.iloc[train_idx],self.transform_dict.get('train',None)),PawpularityDataset(self.img_dir,self.data_df.iloc[valid_idx],self.transform_dict.get('valid',None))
+                if(self.with_conf_bar):
+                    yield PawpularityWithConfidenceBarDataset(self.img_dir,self.data_df.iloc[train_idx],self.transform_dict.get('train',None)),PawpularityWithConfidenceBarDataset(self.img_dir,self.data_df.iloc[valid_idx],self.transform_dict.get('valid',None))
+                else:
+                    yield PawpularityDataset(self.img_dir,self.data_df.iloc[train_idx],self.transform_dict.get('train',None)),PawpularityDataset(self.img_dir,self.data_df.iloc[valid_idx],self.transform_dict.get('valid',None))
 
     def normalize(self,series:pd.Series) -> pd.Series:
         
