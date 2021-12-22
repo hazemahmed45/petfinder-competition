@@ -2,7 +2,7 @@ import torch
 from torch.optim.lr_scheduler import StepLR
 from torch.utils import data
 from model import SwinTransfromerWithMetaPawpularityClassifier
-from dataloader import PawpularityClassificationDatasetSplitter
+from dataloaders.regression_dataloader import PawpularityClassificationDatasetSplitter
 from tqdm import tqdm
 from torch.optim import Adam
 from torch.nn import CrossEntropyLoss

@@ -3,7 +3,7 @@ import torch
 from torch.optim.lr_scheduler import StepLR
 from torch.utils import data
 from model import CustomClassifierBackBone
-from dataloader import PawpularityDatasetSplitter,OpenImageDogCatDatasetSplitter
+from dataloaders.regression_dataloader import PawpularityDatasetSplitter,OpenImageDogCatDatasetSplitter
 from tqdm import tqdm
 from torch.optim import Adam
 from torch.nn import BCEWithLogitsLoss

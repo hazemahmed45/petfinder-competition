@@ -76,6 +76,7 @@ class Configs():
             os.mkdir( self.cur_exp_dir)
         
         self.epochs=50
+        self.bin_increment=5
         self.pin_memory=True
         self.random_seed=999
         self.low_aug_bounds=0.5

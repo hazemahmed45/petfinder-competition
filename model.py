@@ -421,6 +421,41 @@ class SwinTransfromerWithMetaWithConfidenceBarPawpularityRegressor(nn.Module):
         out_reg=self.fc_paw(x)
         out_conf=self.fc_conf_bar(x)
         return out_reg,out_conf
+    
+class SwinTransfromerWithMetaWithBinsPawpularityRegressor(nn.Module):
+    def __init__(self,bin_increment) -> None:
+        super(SwinTransfromerWithMetaWithBinsPawpularityRegressor,self).__init__()
+        self.backbone=LargeSwinTransformerBackbone()
+        # l =[layer for layer in self.backbone.parameters()]
+        # for layer in l[:316]:
+        #     layer.requires_grad=False
+        # for layer in self.backbone.modules[:-5].parameters():
+        #     layer.require_grad=False
+        self.meta_head=MetaBlock()
+        self.fc_paw=nn.Sequential(
+            nn.Linear(self.backbone.emb_dim+self.meta_head.meta_emb_dim,512),
+            nn.Dropout(0.4),
+            nn.Linear(512,512),
+            nn.Dropout(0.5),
+            nn.Linear(512,1),
+            nn.ReLU()
+            )
+        self.fc_bin_bar=nn.Sequential(
+            nn.Linear(self.backbone.emb_dim+self.meta_head.meta_emb_dim,512),
+            nn.Dropout(0.4),
+            nn.Linear(512,512),
+            nn.Dropout(0.5),
+            nn.Linear(512,100//bin_increment),
+            )
+    def forward(self,img_in,meta_in):
+        batch_size=img_in.shape[0]
+        img_out = self.backbone(img_in)
+        meta_out=self.meta_head(meta_in)
+        meta_out=meta_out.view((batch_size,self.meta_head.meta_emb_dim))
+        x=torch.cat((img_out,meta_out),dim=1)
+        out_reg=self.fc_paw(x)
+        out_bin=self.fc_bin_bar(x)
+        return out_reg,out_bin
 class SwinTransfromerWithConfidenceBarPawpularityRegressor(nn.Module):
     def __init__(self) -> None:
         super(SwinTransfromerWithConfidenceBarPawpularityRegressor,self).__init__()

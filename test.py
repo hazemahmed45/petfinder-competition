@@ -1,7 +1,7 @@
 from pickle import FALSE
 from model import InceptionV3WithMetaWithConfidenceBarPawpularityClassifier
 import torch
-from dataloader import PawpularityDatasetSplitter
+from dataloaders.regression_dataloader import PawpularityDatasetSplitter
 from augmentation import get_torch_transform_pipeline
 from sklearn.metrics import mean_squared_error
 import math

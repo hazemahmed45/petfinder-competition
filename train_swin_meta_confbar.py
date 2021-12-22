@@ -2,7 +2,7 @@ import torch
 from torch.optim.lr_scheduler import StepLR
 from torch.utils import data
 from model import SwinTransfromerWithMetaWithConfidenceBarPawpularityRegressor
-from dataloader import PawpularityDatasetSplitter
+from dataloaders.regression_dataloader import PawpularityDatasetSplitter
 from tqdm import tqdm
 from torch.optim import Adam
 from torch.nn import MSELoss,BCEWithLogitsLoss
@@ -18,7 +18,7 @@ from torchvision.transforms import transforms
 import random
 import numpy as np
 from config import Configs
-from utils import train_meta_confbar_regression_loop
+from utils import train_meta_bar_regression_loop
 
 # from torchsummary import summary
 config=Configs()
@@ -98,7 +98,7 @@ for e in range(config.epochs):
     #         rmse_metric.name:rmse_metric.get_value()*100,
     #         binary_acc_metric.name:binary_acc_metric.get_value()
     #         })
-    train_meta_confbar_regression_loop(model,train_loader,optimizer,regression_criterion,confidence_criterion,running_loss,rmse_metric,binary_acc_metric,e,device,True)
+    train_meta_bar_regression_loop(model,train_loader,optimizer,regression_criterion,confidence_criterion,running_loss,rmse_metric,binary_acc_metric,e,device,True)
     
     log_dict['loss/train']=running_loss.get_value()
     log_dict['rmse/train']=rmse_metric.get_value()*100
@@ -109,7 +109,7 @@ for e in range(config.epochs):
     rmse_metric.reset()
     binary_acc_metric.reset()
     with torch.no_grad():
-        train_meta_confbar_regression_loop(model,valid_loader,optimizer,regression_criterion,confidence_criterion,running_loss,rmse_metric,binary_acc_metric,e,device,False)
+        train_meta_bar_regression_loop(model,valid_loader,optimizer,regression_criterion,confidence_criterion,running_loss,rmse_metric,binary_acc_metric,e,device,False)
         
         # iter_loop=tqdm(enumerate(valid_loader),total=len(valid_loader))
         # for ii,(img_batch,meta_batch,label_batch,conf_label_batch) in iter_loop:

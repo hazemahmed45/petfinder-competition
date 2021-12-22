@@ -3,7 +3,7 @@ import torch
 from torch.optim.lr_scheduler import StepLR
 from torch.utils import data
 from model import ClassifierBackbone
-from dataloader import DogCatDataset
+from dataloaders.regression_dataloader import DogCatDataset
 from tqdm import tqdm
 from torch.optim import Adam
 from torch.nn import MSELoss,BCEWithLogitsLoss

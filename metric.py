@@ -37,6 +37,28 @@ class Accuracy(Metric):
     def reset(self):
         self.value=0
         self.num=0
+        
+class BinAccuracy(Metric):
+    def __init__(self):
+        self.name='BinAccuracy'
+        self.value=0
+        self.num=0
+        return 
+    def update(self,**kwargs):
+        self.num+=1
+        targets=kwargs['y_true']
+        prediciton=kwargs['y_pred']
+        targets=targets.detach().cpu()
+        prediciton=prediciton.detach().cpu()
+        batch_size=targets.shape[0]
+        self.value+=(prediciton.argmax(dim=1)==targets.argmax(dim=1)).float().mean().item()
+        
+        return 
+    def get_value(self):
+        return self.value/self.num if self.num !=0 else 0
+    def reset(self):
+        self.value=0
+        self.num=0
 class BinaryAccuracy(Metric):
     def __init__(self):
         self.name='BinaryAccuracy'
@@ -75,6 +97,31 @@ class RMSE(Metric):
         targets=targets.detach().cpu()
         prediciton=prediciton.detach().cpu()
         self.value+=math.sqrt(torch.nn.functional.mse_loss(prediciton,targets)+self.eps)
+        return 
+    def get_value(self):
+        return self.value/self.num if self.num !=0 else 0
+    def reset(self):
+        self.value=0
+        self.num=0
+        return 
+class ClassificationRMSE(Metric):
+    def __init__(self,bin_increment) -> None:
+        super().__init__()
+        self.name='classification_rmse'
+        self.value=0
+        self.num=0
+        self.eps=1e-9
+        self.bin_increment=bin_increment
+        
+    def update(self, **kwargs):
+        self.num+=1
+        targets=kwargs['y_true']
+        prediciton=kwargs['y_pred']
+        targets=targets.detach().cpu()
+        prediciton=prediciton.detach().cpu()
+        # bin_num=targets.shape[1]
+        
+        self.value+=math.sqrt(torch.nn.functional.mse_loss((prediciton.argmax(dim=1)*self.bin_increment)/100,(targets.argmax(dim=1)*self.bin_increment)/100)+self.eps)
         return 
     def get_value(self):
         return self.value/self.num if self.num !=0 else 0
