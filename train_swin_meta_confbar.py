@@ -1,11 +1,11 @@
 import torch
 from torch.optim.lr_scheduler import StepLR
 from torch.utils import data
-from model import SwinTransfromerWithMetaWithConfidenceBarPawpularityRegressor
-from dataloaders.regression_dataloader import PawpularityDatasetSplitter
+from model import SmallSwinTransfromerWithMetaWithConfidenceBarPawpularityRegressor
+from dataloaders.regression_dataloader import PawpularityWithMetaWithConfidenceDatasetSplitter
 from tqdm import tqdm
 from torch.optim import Adam
-from torch.nn import MSELoss,BCEWithLogitsLoss
+from torch.nn import MSELoss,BCELoss
 # from loss import RMSELoss
 from torch.utils.data import DataLoader
 from augmentation import get_transform_pipeline
@@ -26,7 +26,14 @@ config=Configs()
 np.random.seed(config.random_seed)
 random.seed(config.random_seed)
 torch.manual_seed(config.random_seed)
+torch.manual_seed(config.random_seed)
+torch.cuda.manual_seed(config.random_seed)
+torch.backends.cudnn.deterministic = True
+torch.use_deterministic_algorithms = True
 
+config.script_name=__file__
+config.dataset_name=PawpularityWithMetaWithConfidenceDatasetSplitter.__name__
+config.model_name=SmallSwinTransfromerWithMetaWithConfidenceBarPawpularityRegressor.__name__
 # EXP_NUM=4
 # CKPT_DIR='checkpoints'
 
@@ -43,19 +50,19 @@ transform_dict={
     'train':get_transform_pipeline(config.img_width,config.img_height,config.augmentation,prob_range=[config.low_aug_bounds,config.high_aug_bounds]),
     'valid':get_transform_pipeline(config.img_width,config.img_height,False)
 }
-dataset_splitter=PawpularityDatasetSplitter(img_dir=config.img_dir,meta_csv=config.img_meta_dir,transforms_dict=transform_dict,with_meta=config.with_meta,with_conf_bar=config.with_conf_bar)
+dataset_splitter=PawpularityWithMetaWithConfidenceDatasetSplitter(img_dir=config.img_dir,meta_csv=config.img_meta_dir,transforms_dict=transform_dict)
 train_dataset,valid_dataset=next(iter(dataset_splitter.generate_train_valid_dataset(config.train_split)))
 
 train_loader=DataLoader(dataset=train_dataset,batch_size=config.batch_size,shuffle=config.shuffle,num_workers=config.num_workers,pin_memory=config.pin_memory)
 valid_loader=DataLoader(dataset=valid_dataset,batch_size=config.batch_size,shuffle=config.shuffle,num_workers=config.num_workers,pin_memory=config.pin_memory)
 # print(config.device)
-model=SwinTransfromerWithMetaWithConfidenceBarPawpularityRegressor()
+model=SmallSwinTransfromerWithMetaWithConfidenceBarPawpularityRegressor()
 model.to(config.device)
 
 print(summary(model,input_data=[(3,config.img_width,config.img_height),(1,12)]))
 
 regression_criterion=MSELoss()
-confidence_criterion=BCEWithLogitsLoss()
+confidence_criterion=BCELoss()
 optimizer=Adam(params=model.parameters(),lr=config.lr)
 
 running_loss=RunningLoss()
@@ -72,32 +79,7 @@ for e in range(config.epochs):
     rmse_metric.reset()
     binary_acc_metric.reset()
     log_dict={}
-    # iter_loop=tqdm(enumerate(train_loader),total=len(train_loader))
-    # # running_loss=0
-    # for ii,(img_batch,meta_batch,label_batch,conf_label_batch) in iter_loop:
-    #     optimizer.zero_grad(set_to_none=True)
-    #     img_batch=img_batch.cuda()
-    #     label_batch=label_batch.cuda()
-    #     meta_batch=meta_batch.cuda()
-    #     conf_label_batch=conf_label_batch.cuda()
-        
-    #     # print(img_batch.shape,label_batch.shape,meta_batch.shape)
-    #     output_reg,output_conf=model(img_batch,meta_batch)
-    #     label_batch=label_batch.view(output_reg.shape)
-    #     loss_reg=regression_criterion(output_reg,label_batch)
-    #     loss_conf=confidence_criterion(output_conf,conf_label_batch)
-    #     loss=loss_reg+loss_conf
-    #     loss.backward()
-    #     optimizer.step()
-    #     running_loss.update(batch_loss=loss)
-    #     rmse_metric.update(y_pred=output_reg,y_true=label_batch)
-    #     binary_acc_metric.update(y_pred=output_conf,y_true=conf_label_batch)
-    #     iter_loop.set_description('TRAIN LOOP E: '+str(e))
-    #     iter_loop.set_postfix({
-    #         running_loss.name:running_loss.get_value(),
-    #         rmse_metric.name:rmse_metric.get_value()*100,
-    #         binary_acc_metric.name:binary_acc_metric.get_value()
-    #         })
+  
     train_meta_bar_regression_loop(model,train_loader,optimizer,regression_criterion,confidence_criterion,running_loss,rmse_metric,binary_acc_metric,e,device,True)
     
     log_dict['loss/train']=running_loss.get_value()
@@ -111,26 +93,7 @@ for e in range(config.epochs):
     with torch.no_grad():
         train_meta_bar_regression_loop(model,valid_loader,optimizer,regression_criterion,confidence_criterion,running_loss,rmse_metric,binary_acc_metric,e,device,False)
         
-        # iter_loop=tqdm(enumerate(valid_loader),total=len(valid_loader))
-        # for ii,(img_batch,meta_batch,label_batch,conf_label_batch) in iter_loop:
-        #     img_batch=img_batch.cuda()
-        #     label_batch=label_batch.cuda()
-        #     conf_label_batch=conf_label_batch.cuda()
-        #     meta_batch=meta_batch.cuda()
-        #     output_reg,output_conf=model(img_batch,meta_batch)
-        #     label_batch=label_batch.view(output_reg.shape)
-        #     loss_reg=regression_criterion(output_reg,label_batch)
-        #     loss_conf=confidence_criterion(output_conf,conf_label_batch)
-        #     loss=loss_reg+loss_conf
-        #     running_loss.update(batch_loss=loss)
-        #     rmse_metric.update(y_pred=output_reg,y_true=label_batch)
-        #     binary_acc_metric.update(y_pred=output_conf,y_true=conf_label_batch)
-        #     iter_loop.set_description('VALID LOOP E: '+str(e))
-        #     iter_loop.set_postfix({
-        #         running_loss.name:running_loss.get_value(),
-        #         rmse_metric.name:rmse_metric.get_value()*100,
-        #         binary_acc_metric.name:binary_acc_metric.get_value()
-        #     })
+
         ckpt_callback.check_and_save(model,running_loss.get_value())   
     schedular.step()
     log_dict['loss/valid']=running_loss.get_value()
