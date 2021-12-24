@@ -75,7 +75,7 @@ class Configs():
         if(not os.path.exists( self.cur_exp_dir)):
             os.mkdir( self.cur_exp_dir)
         
-        self.epochs=50
+        self.epochs=10
         self.bin_increment=5
         self.pin_memory=True
         self.random_seed=999
