@@ -1,5 +1,4 @@
 from abc import abstractmethod
-from cv2 import sqrt
 import torch
 import numpy as np
 from sklearn.metrics import recall_score,precision_score,f1_score
@@ -129,6 +128,31 @@ class ClassificationRMSE(Metric):
         self.value=0
         self.num=0
         return 
+class BinConfidenceBarRMSE(Metric):
+    def __init__(self,bin_increment) -> None:
+        super().__init__()
+        self.name='classification_rmse'
+        self.value=0
+        self.num=0
+        self.eps=1e-9
+        self.bin_increment=bin_increment
+        
+    def update(self, **kwargs):
+        self.num+=1
+        targets=kwargs['y_true']
+        prediciton=kwargs['y_pred']
+        targets=targets.detach().cpu()
+        prediciton=prediciton.detach().cpu()
+
+        
+        self.value+=math.sqrt(torch.nn.functional.mse_loss((prediciton>0.5).sum()*self.bin_increment/100,((targets>0.5).sum()*self.bin_increment)/100)+self.eps)
+        return 
+    def get_value(self):
+        return self.value/self.num if self.num !=0 else 0
+    def reset(self):
+        self.value=0
+        self.num=0
+        return 
 class RunningLoss(Metric):
     def __init__(self,name='loss'):
         self.name=name
@@ -215,9 +239,13 @@ class F1Score(Metric):
 
 
 if(__name__ == '__main__'):
-    rmse=RMSE()
-    x=torch.randn((16,1))
-    y=torch.randn((16,1))
-    rmse.update(y_pred=x,y_true=y)
-    print(rmse.get_value())
+    m=BinConfidenceBarRMSE(5)
+    x=torch.cat((torch.ones((1,2)),torch.zeros((1,18))),dim=1)
+    y=torch.cat((torch.ones((1,10)),torch.zeros((1,10))),dim=1)
+    print(x)
+    print(x.shape)
+    print(y)
+    print(y.shape)
+    m.update(y_pred=x,y_true=y)
+    print(m.get_value())
     pass
