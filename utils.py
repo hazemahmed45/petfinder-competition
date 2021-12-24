@@ -155,3 +155,37 @@ def train_confbar_regression_loop(model
             rmse_metric.name:rmse_metric.get_value()*100,
             binary_acc_metric.name:binary_acc_metric.get_value()
             })
+        
+        
+def train_classification_loop(model
+                        ,dataloader
+                        ,optimizer
+                        ,criterion
+                        ,running_loss
+                        ,acc_metric
+                        ,e
+                        ,device='cuda'
+                        ,is_train=True):
+    iter_loop=tqdm(enumerate(dataloader),total=len(dataloader))
+    # running_loss=0
+    for ii,(img_batch,label_batch) in iter_loop:
+        img_batch=img_batch.to(device)
+        label_batch=label_batch.to(device)
+        # print(img_batch.shape,label_batch.shape,meta_batch.shape)
+        output=model(img_batch)
+        label_batch=label_batch.view(output.shape)
+        loss=criterion(output,label_batch)
+
+        if(is_train):
+            
+            optimizer.zero_grad(set_to_none=True)
+            loss.backward()
+            optimizer.step()
+        running_loss.update(batch_loss=loss)
+        acc_metric.update(y_pred=output,y_true=label_batch)
+        iter_loop.set_description('TRAIN LOOP E: '+str(e))
+        iter_loop.set_postfix({
+            running_loss.name:running_loss.get_value(),
+            acc_metric.name:acc_metric.get_value()
+            })
+    return 
