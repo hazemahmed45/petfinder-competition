@@ -230,6 +230,14 @@ class PawpularityDatasetSplitter():
         self.img_dir=img_dir
         self.data_df=pd.read_csv(meta_csv)
         self.transform_dict=transforms_dict
+        self.new_df=pd.DataFrame()
+        for i in range(1,101):
+            sub_data=self.data_df[self.data_df['Pawpularity']==i]
+            # print(sub_data.shape,sub_data.iloc[:min(sub_data.shape[0],70)].shape)
+            # print()
+            self.new_df=pd.concat([self.new_df,sub_data.iloc[:min(sub_data.shape[0],70)]])
+        self.data_df=self.new_df
+            
         
         # self.with_meta=with_meta
         self.data_df.iloc[:,-1]=self.normalize(self.data_df.iloc[:,-1])
@@ -272,6 +280,14 @@ class PawpularityWithMetaWithBinsDatasetSplitter(PawpularityDatasetSplitter):
     def generate_train_valid_dataset(self, train_split=0.8):
         for train_idx,valid_idx in self.k_folder.split(self.data_df):
             yield PawpularityWithMetaWithBinsBarDataset(self.img_dir,self.data_df.iloc[train_idx],self.transform_dict.get('train',None)),PawpularityWithMetaWithBinsBarDataset(self.img_dir,self.data_df.iloc[valid_idx],self.transform_dict.get('valid',None))
+class PawpularityWithBinsDatasetSplitter(PawpularityDatasetSplitter):
+    def __init__(self, img_dir, meta_csv: str, transforms_dict: dict,bin_increment:int):
+        super().__init__(img_dir, meta_csv, transforms_dict)
+        self.bin_increment=bin_increment
+    def generate_train_valid_dataset(self, train_split=0.8):
+        for train_idx,valid_idx in self.k_folder.split(self.data_df):
+            yield PawpularityWithMetaWithBinsBarDataset(self.img_dir,self.data_df.iloc[train_idx],self.transform_dict.get('train',None)),PawpularityWithMetaWithBinsBarDataset(self.img_dir,self.data_df.iloc[valid_idx],self.transform_dict.get('valid',None))
+
 class PawpularityWithMetaWithConfidenceBinsDatasetSplitter(PawpularityDatasetSplitter):
     def __init__(self, img_dir, meta_csv: str, transforms_dict: dict,bin_increment:int):
         super().__init__(img_dir, meta_csv, transforms_dict)
@@ -279,7 +295,6 @@ class PawpularityWithMetaWithConfidenceBinsDatasetSplitter(PawpularityDatasetSpl
     def generate_train_valid_dataset(self, train_split=0.8):
         for train_idx,valid_idx in self.k_folder.split(self.data_df):
             yield PawpularityWithMetaWithConfidenceBinsBarDataset(self.img_dir,self.data_df.iloc[train_idx],self.transform_dict.get('train',None)),PawpularityWithMetaWithConfidenceBinsBarDataset(self.img_dir,self.data_df.iloc[valid_idx],self.transform_dict.get('valid',None))
-
 
 
 
@@ -303,10 +318,10 @@ if (__name__ == '__main__'):
 
     transform_dict={'train':tranfrom_pipeline,'valid':tranfrom_pipeline}
     splitter=PawpularityWithMetaWithConfidenceBinsDatasetSplitter('Dataset/train','Dataset/train.csv',transform_dict,5)
-    dataset,_=next(iter(splitter.generate_train_valid_dataset()))
-    img,meta,value,bin_bar=dataset[0]
-    print(img.shape,meta.shape,value)
-    print(bin_bar)
+    # dataset,_=next(iter(splitter.generate_train_valid_dataset()))
+    # img,meta,value,bin_bar=dataset[0]
+    # print(img.shape,meta.shape,value)
+    # print(bin_bar)
     # # img,label=dataset[0]
     # # print(img.shape,label.shape)
     # print()

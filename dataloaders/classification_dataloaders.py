@@ -77,25 +77,154 @@ class PawpularityClassificationWithMetaDataset(Dataset):
         plt.show()
         return 
 
+class PawpularityClassificationWithBinsDataset(Dataset):
+    def __init__(self,img_dir:str,dataframe:pd.DataFrame,transforms=None,bin_increment=5):
+        super().__init__()
+        self.img_dir=img_dir
+        self.dataframe=dataframe
+        self.transform=transforms
+        self.bin_increment=bin_increment
+        self.bin_num=100//self.bin_increment
+        return 
+    def __getitem__(self, index):
+        img_name=self.dataframe.iloc[index,0]
+        paw_value=self.dataframe.iloc[index,-1]
+        
+        img_path=os.path.join(self.img_dir,img_name+'.jpg')
+        img=cv2.imread(img_path)
+        if(self.transform is not None):
+            if(isinstance(self.transform,t_compose)):
+                img=Image.fromarray(img)
+                img=self.transform(img)
+            elif(isinstance(self.transform,a_compose)):
+                img=self.transform(image=img)['image']
+        paw_index=round(paw_value*100)
+        bins=np.zeros((self.bin_num))
+        bins[paw_index%self.bin_num]=1
+        # confidence_bar[:,paw_index:min(paw_index+5,100)]=np.linspace(0.9,0.1,5)[:(min(paw_index+5,100)-paw_index)]
+        return img.float(),torch.tensor(bins,dtype=torch.float32).view((-1))
+    
+    def __len__(self):
+        return self.dataframe.shape[0]
+    def plot_y_hist(self):
+        sb.histplot(x=self.dataframe['Pawpularity'])
+        plt.show()
+        return  
+class PawpularityClassificationWithBinsConfBarDataset(Dataset):
+    def __init__(self,img_dir:str,dataframe:pd.DataFrame,transforms=None,bin_increment=5):
+        super().__init__()
+        self.img_dir=img_dir
+        self.dataframe=dataframe
+        self.transform=transforms
+        self.bin_increment=bin_increment
+        self.bin_num=100//self.bin_increment
+        return 
+    def __getitem__(self, index):
+        img_name=self.dataframe.iloc[index,0]
+        paw_value=self.dataframe.iloc[index,-1]
+        
+        img_path=os.path.join(self.img_dir,img_name+'.jpg')
+        img=cv2.imread(img_path)
+        if(self.transform is not None):
+            if(isinstance(self.transform,t_compose)):
+                img=Image.fromarray(img)
+                img=self.transform(img)
+            elif(isinstance(self.transform,a_compose)):
+                img=self.transform(image=img)['image']
+        paw_index=round(paw_value*100)
+        bins=np.zeros((self.bin_num))
+        bins[:(paw_index%self.bin_num)+1]=1
+        # confidence_bar[:,paw_index:min(paw_index+5,100)]=np.linspace(0.9,0.1,5)[:(min(paw_index+5,100)-paw_index)]
+        return img.float(),torch.tensor(bins,dtype=torch.float32).view((-1))
+    
+    def __len__(self):
+        return self.dataframe.shape[0]
+    def plot_y_hist(self):
+        sb.histplot(x=self.dataframe['Pawpularity'])
+        plt.show()
+        return    
+class PawpularityClassificationWithMetaWithBinsDataset(Dataset):
+    def __init__(self,img_dir:str,dataframe:pd.DataFrame,transforms=None,bin_increment=5):
+        super().__init__()
+        self.img_dir=img_dir
+        self.dataframe=dataframe
+        self.transform=transforms
+        self.bin_increment=bin_increment
+        self.bin_num=100//self.bin_increment
+        return 
+    def __getitem__(self, index):
+        img_name=self.dataframe.iloc[index,0]
+        paw_value=self.dataframe.iloc[index,-1]
+        
+        img_path=os.path.join(self.img_dir,img_name+'.jpg')
+        img=cv2.imread(img_path)
+        if(self.transform is not None):
+            if(isinstance(self.transform,t_compose)):
+                img=Image.fromarray(img)
+                img=self.transform(img)
+            elif(isinstance(self.transform,a_compose)):
+                img=self.transform(image=img)['image']
+        meta=self.dataframe.iloc[index,1:-1].to_numpy(dtype=np.float32).reshape((1,-1))
+        paw_index=round(paw_value*100)
+        bins=np.zeros((self.bin_num))
+        bins[paw_index%self.bin_num]=1
+        # confidence_bar[:,paw_index:min(paw_index+5,100)]=np.linspace(0.9,0.1,5)[:(min(paw_index+5,100)-paw_index)]
+        return img.float(),torch.tensor(meta).float(),torch.tensor(bins,dtype=torch.float32).view((-1))
+    
+    def __len__(self):
+        return self.dataframe.shape[0]
+    def plot_y_hist(self):
+        sb.histplot(x=self.dataframe['Pawpularity'])
+        plt.show()
+        return   
     
 class PawpularityClassificationDatasetSplitter():
-    def __init__(self,img_dir,meta_csv:str,transforms_dict:dict,with_meta=False):
+    def __init__(self,img_dir,meta_csv:str,transforms_dict:dict):
         self.img_dir=img_dir
         self.data_df=pd.read_csv(meta_csv)
         self.transform_dict=transforms_dict
         
-        self.with_meta=with_meta
-        # self.data_df.iloc[:,-1]=self.normalize(self.data_df.iloc[:,-1])
+        self.data_df.iloc[:,-1]=self.normalize(self.data_df.iloc[:,-1])
         # print(self.Y.describe())
-        self.k_folder=StratifiedKFold()
+        self.k_folder=KFold()
         return 
     def generate_train_valid_dataset(self,train_split=0.8):
-        train_idx,valid_idx=train_test_split(np.arange(self.data_df.shape[0]),train_size=train_split,stratify=self.data_df.iloc[:,-1])
-        # for train_idx,valid_idx in self.k_folder.split(self.data_df):
-        if(self.with_meta):
-            yield PawpularityClassificationWithMetaDataset(self.img_dir,self.data_df.iloc[train_idx],self.transform_dict.get('train',None)),PawpularityClassificationWithMetaDataset(self.img_dir,self.data_df.iloc[valid_idx],self.transform_dict.get('valid',None))
-        else:
+        for train_idx,valid_idx in self.k_folder.split(self.data_df):
             yield PawpularityClassificationDataset(self.img_dir,self.data_df.iloc[train_idx],self.transform_dict.get('train',None)),PawpularityClassificationDataset(self.img_dir,self.data_df.iloc[valid_idx],self.transform_dict.get('valid',None))
+
+    def normalize(self,series:pd.Series) -> pd.Series:
+        
+        return (series-0)/(series.max()-0)
+class PawpularityClassificationWithBinsDatasetSplitter(PawpularityClassificationDatasetSplitter):
+    def __init__(self, img_dir, meta_csv: str, transforms_dict: dict,bin_increment):
+        super().__init__(img_dir, meta_csv, transforms_dict)
+        self.bin_increment=bin_increment
+    def generate_train_valid_dataset(self,train_split=0.8):
+        for train_idx,valid_idx in self.k_folder.split(self.data_df):
+            yield PawpularityClassificationWithBinsDataset(self.img_dir,self.data_df.iloc[train_idx],self.transform_dict.get('train',None),self.bin_increment),PawpularityClassificationWithBinsDataset(self.img_dir,self.data_df.iloc[valid_idx],self.transform_dict.get('valid',None),self.bin_increment)
+
+    def normalize(self,series:pd.Series) -> pd.Series:
+        
+        return (series-0)/(series.max()-0)
+class PawpularityClassificationWithBinsConfBarDatasetSplitter(PawpularityClassificationDatasetSplitter):
+    def __init__(self, img_dir, meta_csv: str, transforms_dict: dict,bin_increment):
+        super().__init__(img_dir, meta_csv, transforms_dict)
+        self.bin_increment=bin_increment
+    def generate_train_valid_dataset(self,train_split=0.8):
+        for train_idx,valid_idx in self.k_folder.split(self.data_df):
+            yield PawpularityClassificationWithBinsConfBarDataset(self.img_dir,self.data_df.iloc[train_idx],self.transform_dict.get('train',None),self.bin_increment),PawpularityClassificationWithBinsConfBarDataset(self.img_dir,self.data_df.iloc[valid_idx],self.transform_dict.get('valid',None),self.bin_increment)
+
+    def normalize(self,series:pd.Series) -> pd.Series:
+        
+        return (series-0)/(series.max()-0)
+    
+class PawpularityClassificationWithMetaWithBinsDatasetSplitter(PawpularityClassificationDatasetSplitter):
+    def __init__(self, img_dir, meta_csv: str, transforms_dict: dict,bin_increment):
+        super().__init__(img_dir, meta_csv, transforms_dict)
+        self.bin_increment=bin_increment
+    def generate_train_valid_dataset(self,train_split=0.8):
+        for train_idx,valid_idx in self.k_folder.split(self.data_df):
+            yield PawpularityClassificationWithMetaWithBinsDataset(self.img_dir,self.data_df.iloc[train_idx],self.transform_dict.get('train',None),self.bin_increment),PawpularityClassificationWithMetaWithBinsDataset(self.img_dir,self.data_df.iloc[valid_idx],self.transform_dict.get('valid',None),self.bin_increment)
 
     def normalize(self,series:pd.Series) -> pd.Series:
         
