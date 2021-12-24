@@ -84,6 +84,39 @@ def train_meta_bins_regression_loop(model
             acc_metric.name:acc_metric.get_value(),
             classification_rmse_metric.name:classification_rmse_metric.get_value()*100
             })
+def train_bins_classification_loop(model
+                            ,dataloader
+                            ,optimizer
+                            ,bins_criterion
+                            ,running_loss
+                            ,classification_rmse_metric
+                            ,acc_metric
+                            ,e
+                            ,device='cuda'
+                            ,is_train=True):
+    iter_loop=tqdm(enumerate(dataloader),total=len(dataloader))
+    # running_loss=0
+    for ii,(img_batch,bins_label_batch) in iter_loop:
+        img_batch=img_batch.to(device)
+        bins_label_batch=bins_label_batch.to(device)
+        
+        # print(img_batch.shape,label_batch.shape,meta_batch.shape)
+        output_bins=model(img_batch)
+        loss=bins_criterion(output_bins,bins_label_batch)
+        if(is_train):
+            
+            optimizer.zero_grad(set_to_none=True)
+            loss.backward()
+            optimizer.step()
+        running_loss.update(batch_loss=loss)
+        classification_rmse_metric.update(y_pred=output_bins,y_true=bins_label_batch)
+        acc_metric.update(y_pred=output_bins,y_true=bins_label_batch)
+        iter_loop.set_description('TRAIN' if is_train else 'VALID'+' LOOP E: '+str(e))
+        iter_loop.set_postfix({
+            running_loss.name:running_loss.get_value(),
+            acc_metric.name:acc_metric.get_value(),
+            classification_rmse_metric.name:classification_rmse_metric.get_value()*100
+            })
         
 def train_confbar_regression_loop(model
                             ,dataloader
