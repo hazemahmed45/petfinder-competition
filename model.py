@@ -553,7 +553,25 @@ class SwinTransfromerWithMetaPawpularityClassifier(nn.Module):
         x=torch.cat((img_out,meta_out),dim=1)
         out=self.fc(x)
         return out
-    
+class SmallSwinTransfromerWithBinsPawpularityClassifier(nn.Module):
+    def __init__(self,bin_increment) -> None:
+        super(SmallSwinTransfromerWithBinsPawpularityClassifier,self).__init__()
+        self.backbone=SmallSwinTransformerBackbone()
+        # l =[layer for layer in self.backbone.parameters()]
+        # for layer in l[:316]:
+        #     layer.requires_grad=False
+
+        self.fc_bin_bar=nn.Sequential(
+            nn.Linear(self.backbone.emb_dim,512),
+            nn.Dropout(0.4),
+            nn.Linear(512,512),
+            nn.Dropout(0.5),
+            nn.Linear(512,100//bin_increment),
+            )
+    def forward(self,img_in):
+        img_out = self.backbone(img_in)
+        out_bin=self.fc_bin_bar(img_out)
+        return out_bin
     
     
 if(__name__ == '__main__'):
