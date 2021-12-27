@@ -51,12 +51,12 @@ class SmallMetaBlock(nn.Module):
         return self.meta_block(x).view((-1,self.meta_emb_dim))
     
     
-class Resnet18RegressorBackbone(nn.Module):
+class Resnet18Backbone(nn.Module):
     def __init__(self,pretrained=True) -> None:
-        super(Resnet18RegressorBackbone,self).__init__()
-        self.backbone=resnet18(pretrained=pretrained)
-        self.emb_dim=self.backbone.fc.in_features
-        self.backbone.fc=Identity()
+        super(Resnet18Backbone,self).__init__()
+        self.backbone=create_model('resnet18',pretrained=True,num_classes=0)
+        self.emb_dim=512
+        # self.backbone.fc=Identity()
         return 
     def forward(self,x):
         x=self.backbone(x)
@@ -83,7 +83,7 @@ class Resnet18PawpularityRegressor(nn.Module):
     def __init__(self,backbone_weights=None) -> None:
         super(Resnet18PawpularityRegressor,self).__init__()
         self.in_layer=nn.Conv2d(1,3,3,padding=1)
-        self.backbone=Resnet18RegressorBackbone(False)
+        self.backbone=Resnet18Backbone(False)
         if(backbone_weights is not None):
             self.backbone.load_state_dict(torch.load(backbone_weights))
         
@@ -106,7 +106,7 @@ class Resnet18PawpularityRegressor(nn.Module):
 class Resnet18WithMetaPawpularityRegressor(nn.Module):
     def __init__(self,backbone_weights=None) -> None:
         super(Resnet18WithMetaPawpularityRegressor,self).__init__()
-        self.backbone=Resnet18RegressorBackbone(False)
+        self.backbone=Resnet18Backbone(False)
         if(backbone_weights is not None):
             self.backbone.load_state_dict(torch.load(backbone_weights))
         for param in self.backbone.parameters():
@@ -133,15 +133,14 @@ class Resnet18WithMetaPawpularityRegressor(nn.Module):
 class Resnet18WithMetaWithConfidenceBarPawpularityRegressor(nn.Module):
     def __init__(self,backbone_weights=None) -> None:
         super(Resnet18WithMetaWithConfidenceBarPawpularityRegressor,self).__init__()
-        self.backbone=Resnet18RegressorBackbone(True)
+        self.backbone=Resnet18Backbone(True)
         if(backbone_weights is not None):
             self.backbone.load_state_dict(torch.load(backbone_weights))
         for param in self.backbone.parameters():
             param.requires_grad = False
-        self.meta_head=MetaBlock()
-        self.meta_head_dim=self.meta_head.meta_emb_dim       
+   
         self.fc_paw=nn.Sequential(
-            nn.Linear(self.backbone.emb_dim+self.meta_head_dim,512),
+            nn.Linear(self.backbone.emb_dim,512),
             nn.Dropout(0.4),
             nn.Linear(512,512),
             nn.Dropout(0.5),
@@ -149,7 +148,7 @@ class Resnet18WithMetaWithConfidenceBarPawpularityRegressor(nn.Module):
             nn.ReLU()
             )
         self.fc_conf_bar=nn.Sequential(
-            nn.Linear(self.backbone.emb_dim+self.meta_head_dim,512),
+            nn.Linear(self.backbone.emb_dim,512),
             nn.Dropout(0.4),
             nn.Linear(512,512),
             nn.Dropout(0.5),
@@ -166,7 +165,45 @@ class Resnet18WithMetaWithConfidenceBarPawpularityRegressor(nn.Module):
         out_reg=self.fc_paw(x)
         out_conf=self.fc_conf_bar(x)
         return out_reg,out_conf
-
+class Resnet18WithConfBarWithSpeciesPawpularityRegressor(nn.Module):
+    def __init__(self,backbone_weights=None) -> None:
+        super(Resnet18WithConfBarWithSpeciesPawpularityRegressor,self).__init__()
+        self.backbone=Resnet18Backbone(True)
+        if(backbone_weights is not None):
+            self.backbone.load_state_dict(torch.load(backbone_weights))
+        for param in self.backbone.parameters():
+            param.requires_grad = False
+   
+        self.fc_paw=nn.Sequential(
+            nn.Linear(self.backbone.emb_dim,512),
+            nn.Dropout(0.4),
+            nn.Linear(512,512),
+            nn.Dropout(0.5),
+            nn.Linear(512,1),
+            nn.SiLU()
+            )
+        self.fc_conf_bar=nn.Sequential(
+            nn.Linear(self.backbone.emb_dim,512),
+            nn.Dropout(0.4),
+            nn.Linear(512,512),
+            nn.Dropout(0.5),
+            nn.Linear(512,100),
+            nn.SiLU()
+            )
+        self.fc_species=nn.Sequential(
+            nn.Linear(self.backbone.emb_dim,512),
+            nn.Dropout(0.4),
+            nn.Linear(512,512),
+            nn.Dropout(0.5),
+            nn.Linear(512,1),
+            )
+        return 
+    def forward(self,img_in):
+        x = self.backbone(img_in)
+        out_reg=self.fc_paw(x)
+        out_conf=self.fc_conf_bar(x)
+        out_species=self.fc_species(x)
+        return out_reg,out_conf,out_species
 class InceptionV3WithMetaWithConfidenceBarPawpularityRegressor(nn.Module):
     def __init__(self,backbone_weights=None) -> None:
         super(InceptionV3WithMetaWithConfidenceBarPawpularityRegressor,self).__init__()
@@ -582,9 +619,9 @@ if(__name__ == '__main__'):
     # print(summary(model,[img_in,meta_in]))
     # print(model(img_in,torch.randn((16,12)).cuda()))
     # model(img_in)
-    model=SmallSwinTransformerBackbone().cuda()
+    # model=SmallSwinTransformerBackbone().cuda()
+    model=create_model('swin_large_patch4_window7_224',pretrained=True)
     l=[layer for layer in model.parameters()]
     print(summary(model,img_in))
-    print(model)
     print(model(img_in).shape)
     print(len(l))

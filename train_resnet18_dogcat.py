@@ -1,8 +1,8 @@
 import torch
 from torch.optim.lr_scheduler import StepLR
 from torch.utils import data
-from model import SmallSwinTransformerBackbone
-from dataloaders.classification_dataloaders import OpenImageDogCatDatasetSplitter
+from model import Resnet18Backbone
+from dataloaders.classification_dataloaders import DogCatDatasetSplitter
 from tqdm import tqdm
 from torch.optim import Adam
 from torch.nn import MSELoss,BCEWithLogitsLoss,BCELoss,CrossEntropyLoss
@@ -25,14 +25,19 @@ import atexit
 # from thop import profile,clever_formats1
 
 config=Configs()
-def exit_handler():
+def exit_interupt_handler():
     global config
     config.is_stoped=True
     config.save_config_dict()
     wandb.finish()
     return 
-
-atexit.register(exit_handler)
+def exit_handler():
+    global config
+    config.is_stoped=False
+    config.save_config_dict()
+    wandb.finish()
+    return 
+atexit.register(exit_interupt_handler)
 
 np.random.seed(config.random_seed)
 random.seed(config.random_seed)
@@ -42,37 +47,34 @@ torch.backends.cudnn.deterministic = True
 torch.use_deterministic_algorithms = True
 
 config.script_name=__file__
-config.dataset_name=OpenImageDogCatDatasetSplitter.__name__
-config.model_name=SmallSwinTransformerBackbone.__name__
+config.dataset_name=DogCatDatasetSplitter.__name__
+config.model_name=Resnet18Backbone.__name__
 # EXP_NUM=4
 # CKPT_DIR='checkpoints'
-
-BACKBONE='swin'
+config.epochs=50
+BACKBONE='resnet18'
 config.backbone=BACKBONE
 MODEL_NAME='pawpularity_'+config.backbone+'_classifier_'+str(config.experiment_num)+'.pt'
 device='cuda' if torch.cuda.is_available() else 'cpu'
 config.model_name=MODEL_NAME
 config.device=device
 config.job_type='classification'
-config.img_dir='openimage_dogcat/images/train'
-config.img_meta_dir='openimage_dogcat/labels/train'
-config.batch_size=32
+config.img_dir='./dogs-vs-cats/train'
 
 wandb.init(name='pawpularity-regressor-'+config.backbone+'-backbone-'+str(config.experiment_num),config=config,job_type=config.job_type,project="pawpularity-regression", entity="hazem45")
 transform_dict={
     'train':get_transform_pipeline(config.img_width,config.img_height,config.augmentation),
     'valid':get_transform_pipeline(config.img_width,config.img_height,False)
 }
-splitter=OpenImageDogCatDatasetSplitter(image_dir=config.img_dir,label_dir=config.img_meta_dir,transforms_dict=transform_dict)
+splitter=DogCatDatasetSplitter(dataset_dir=config.img_dir,transforms_dict=transform_dict)
 train_dataset,valid_dataset=next(iter(splitter.generate_train_valid_dataset(config.train_split)))
 
 train_loader=DataLoader(dataset=train_dataset,batch_size=config.batch_size,shuffle=config.shuffle,num_workers=config.num_workers,pin_memory=config.pin_memory,drop_last=True)
 valid_loader=DataLoader(dataset=valid_dataset,batch_size=config.batch_size,shuffle=False,num_workers=config.num_workers,pin_memory=config.pin_memory,drop_last=False)
-from timm import create_model
-backone=create_model('swin_large_patch4_window7_224',pretrained=True,num_classes=0)
+backone=Resnet18Backbone()
 model=torch.nn.Sequential(
     backone,
-    torch.nn.Linear(1536,512),
+    torch.nn.Linear(backone.emb_dim,512),
     torch.nn.BatchNorm1d(512),
     torch.nn.ReLU(),
     torch.nn.Linear(512,512),
@@ -126,4 +128,5 @@ for e in range(config.epochs):
     wandb.log(log_dict)
 
 wandb.finish()
-atexit.unregister(exit_handler)
+atexit.unregister(exit_interupt_handler)
+atexit.register(exit_handler)

@@ -1,7 +1,7 @@
 import torch
 from torch.optim.lr_scheduler import StepLR
 from torch.utils import data
-from model import SmallSwinTransformerBackbone
+from model import Resnet18Backbone
 from dataloaders.classification_dataloaders import OpenImageDogCatDatasetSplitter
 from tqdm import tqdm
 from torch.optim import Adam
@@ -43,11 +43,11 @@ torch.use_deterministic_algorithms = True
 
 config.script_name=__file__
 config.dataset_name=OpenImageDogCatDatasetSplitter.__name__
-config.model_name=SmallSwinTransformerBackbone.__name__
+config.model_name=Resnet18Backbone.__name__
 # EXP_NUM=4
 # CKPT_DIR='checkpoints'
-
-BACKBONE='swin'
+config.epochs=50
+BACKBONE='resnet18'
 config.backbone=BACKBONE
 MODEL_NAME='pawpularity_'+config.backbone+'_classifier_'+str(config.experiment_num)+'.pt'
 device='cuda' if torch.cuda.is_available() else 'cpu'
@@ -56,7 +56,6 @@ config.device=device
 config.job_type='classification'
 config.img_dir='openimage_dogcat/images/train'
 config.img_meta_dir='openimage_dogcat/labels/train'
-config.batch_size=32
 
 wandb.init(name='pawpularity-regressor-'+config.backbone+'-backbone-'+str(config.experiment_num),config=config,job_type=config.job_type,project="pawpularity-regression", entity="hazem45")
 transform_dict={
@@ -69,10 +68,10 @@ train_dataset,valid_dataset=next(iter(splitter.generate_train_valid_dataset(conf
 train_loader=DataLoader(dataset=train_dataset,batch_size=config.batch_size,shuffle=config.shuffle,num_workers=config.num_workers,pin_memory=config.pin_memory,drop_last=True)
 valid_loader=DataLoader(dataset=valid_dataset,batch_size=config.batch_size,shuffle=False,num_workers=config.num_workers,pin_memory=config.pin_memory,drop_last=False)
 from timm import create_model
-backone=create_model('swin_large_patch4_window7_224',pretrained=True,num_classes=0)
+backone=Resnet18Backbone()
 model=torch.nn.Sequential(
     backone,
-    torch.nn.Linear(1536,512),
+    torch.nn.Linear(backone.emb_dim,512),
     torch.nn.BatchNorm1d(512),
     torch.nn.ReLU(),
     torch.nn.Linear(512,512),

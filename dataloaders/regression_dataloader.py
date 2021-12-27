@@ -223,20 +223,52 @@ class PawpularityWithConfidenceBarDataset(Dataset):
         sb.histplot(x=self.dataframe['Pawpularity'])
         plt.show()
         return     
+class PawpularityWithSpeciesWithConfBarDataset(Dataset):
+    def __init__(self,img_dir:str,dataframe:pd.DataFrame,transforms=None):
+        super().__init__()
+        self.img_dir=img_dir
+        self.dataframe=dataframe
+        self.transform=transforms
 
+        return 
+    def __getitem__(self, index):
+        img_name=self.dataframe.iloc[index]['Id']
+        paw_value=self.dataframe.iloc[index]['Pawpularity']
+        species_type=self.dataframe.iloc[index]['species']
+        # print(paw_value,species_type)
+        img_path=os.path.join(self.img_dir,img_name+'.jpg')
+        img=cv2.imread(img_path)
+        if(self.transform is not None):
+            if(isinstance(self.transform,t_compose)):
+                img=Image.fromarray(img)
+                img=self.transform(img)
+            elif(isinstance(self.transform,a_compose)):
+                img=self.transform(image=img)['image']
+        meta=self.dataframe.iloc[index,1:-1].to_numpy(dtype=np.float32).reshape((1,-1))
+        paw_index=round(paw_value*100)
+        confidence_bar=np.zeros((1,100))+np.concatenate((np.ones((int(paw_index))),np.zeros((int(100-paw_index)))))
+        # confidence_bar[:,paw_index:min(paw_index+5,100)]=np.linspace(0.9,0.1,5)[:(min(paw_index+5,100)-paw_index)]
+        return img.float(),torch.tensor(paw_value,dtype=torch.float32),torch.tensor(confidence_bar,dtype=torch.float32).view((-1)),torch.tensor(species_type).float()
+    
+    def __len__(self):
+        return self.dataframe.shape[0]
+    def plot_y_hist(self):
+        sb.histplot(x=self.dataframe['Pawpularity'])
+        plt.show()
+        return     
 
 class PawpularityDatasetSplitter():
     def __init__(self,img_dir,meta_csv:str,transforms_dict:dict):
         self.img_dir=img_dir
         self.data_df=pd.read_csv(meta_csv)
         self.transform_dict=transforms_dict
-        self.new_df=pd.DataFrame()
-        for i in range(1,101):
-            sub_data=self.data_df[self.data_df['Pawpularity']==i]
-            # print(sub_data.shape,sub_data.iloc[:min(sub_data.shape[0],70)].shape)
-            # print()
-            self.new_df=pd.concat([self.new_df,sub_data.iloc[:min(sub_data.shape[0],70)]])
-        self.data_df=self.new_df
+        # self.new_df=pd.DataFrame()
+        # for i in range(1,101):
+        #     sub_data=self.data_df[self.data_df['Pawpularity']==i]
+        #     # print(sub_data.shape,sub_data.iloc[:min(sub_data.shape[0],70)].shape)
+        #     # print()
+        #     self.new_df=pd.concat([self.new_df,sub_data.iloc[:min(sub_data.shape[0],70)]])
+        # self.data_df=self.new_df
             
         
         # self.with_meta=with_meta
@@ -296,6 +328,18 @@ class PawpularityWithMetaWithConfidenceBinsDatasetSplitter(PawpularityDatasetSpl
         for train_idx,valid_idx in self.k_folder.split(self.data_df):
             yield PawpularityWithMetaWithConfidenceBinsBarDataset(self.img_dir,self.data_df.iloc[train_idx],self.transform_dict.get('train',None)),PawpularityWithMetaWithConfidenceBinsBarDataset(self.img_dir,self.data_df.iloc[valid_idx],self.transform_dict.get('valid',None))
 
+class PawpularityWithSpeciesWithConfBarDatasetSplitter(PawpularityDatasetSplitter):
+    def __init__(self, img_dir, meta_csv: str,species_csv, transforms_dict: dict):
+        super().__init__(img_dir, meta_csv, transforms_dict)
+        species_df=pd.read_csv(species_csv)
+        self.data_df.sort_values(by=['Id'],inplace=True)
+        species_df.sort_values(by=['Id'],inplace=True)
+        self.data_df['species']=species_df['class']
+        # print(self.data_df)
+    def generate_train_valid_dataset(self, train_split=0.8):
+        for train_idx,valid_idx in self.k_folder.split(self.data_df):
+            yield PawpularityWithSpeciesWithConfBarDataset(self.img_dir,self.data_df.iloc[train_idx],self.transform_dict.get('train',None)),PawpularityWithSpeciesWithConfBarDataset(self.img_dir,self.data_df.iloc[valid_idx],self.transform_dict.get('valid',None))
+
 
 
 
@@ -317,9 +361,10 @@ if (__name__ == '__main__'):
         ]) 
 
     transform_dict={'train':tranfrom_pipeline,'valid':tranfrom_pipeline}
-    splitter=PawpularityWithMetaWithConfidenceBinsDatasetSplitter('Dataset/train','Dataset/train.csv',transform_dict,5)
-    # dataset,_=next(iter(splitter.generate_train_valid_dataset()))
-    # img,meta,value,bin_bar=dataset[0]
+    splitter=PawpularityWithSpeciesWithConfBarDatasetSplitter('Dataset/train','Dataset/train.csv','Dataset/train_dog_cat.csv',transform_dict)
+    dataset,_=next(iter(splitter.generate_train_valid_dataset()))
+    img,value,confbar,species=dataset[0]
+    print(img.shape,value,confbar,species)
     # print(img.shape,meta.shape,value)
     # print(bin_bar)
     # # img,label=dataset[0]

@@ -231,22 +231,21 @@ class PawpularityClassificationWithMetaWithBinsDatasetSplitter(PawpularityClassi
         return (series-0)/(series.max()-0)
 
 class DogCatDataset(Dataset):
-    def __init__(self,dataset_dir,transforms=None):
+    def __init__(self,img_list,label_list,transforms=None):
         super().__init__()
-        self.data_dir=dataset_dir
-        self.img_list=os.listdir(dataset_dir)
+        self.img_list=img_list
+        self.label_list=label_list
         self.transforms=transforms
     def __getitem__(self, index):
-        img_name=self.img_list[index]
-        img_path=os.path.join(self.data_dir,img_name)
+        img_path=self.img_list[index]
         img=cv2.imread(img_path)
         if(self.transforms is not None):
-            if(isinstance(self.transform,t_compose)):
+            if(isinstance(self.transforms,t_compose)):
                 img=Image.fromarray(img)
-                img=self.transform(img)
-            elif(isinstance(self.transform,a_compose)):
-                img=self.transform(image=img)['image']
-        label=0 if 'dog' in str.lower(img_name) else 1
+                img=self.transforms(img)
+            elif(isinstance(self.transforms,a_compose)):
+                img=self.transforms(image=img)['image']
+        label=self.label_list[index]
         
         return img,torch.tensor(label).float()
     def __len__(self):
@@ -390,6 +389,32 @@ class OpenImageDogCatDatasetSplitter():
                 if(c in self.dog_cat_labels):
                     labels.append(((0 if c == 7 else 1),float(center_x),float(center_y),float(w),float(h)))
         return labels
+
+class DogCatDatasetSplitter():
+    def __init__(self,dataset_dir,transforms_dict:dict):
+        self.dataset_dir=dataset_dir
+        self.transform_dict=transforms_dict
+        
+        self.img_list=[]
+        self.label_list=[]
+        self.transform_dict=transforms_dict
+        # print("HERE")
+        self.label_list=[]
+        for img_name in os.listdir(self.dataset_dir):
+            img_path=os.path.join(self.dataset_dir,img_name)
+            label=label=0 if 'dog' in str.lower(img_name) else 1
+            self.img_list.append(img_path)
+            self.label_list.append(label)
+            
+        self.img_list=np.array(self.img_list)
+        self.label_list=np.array(self.label_list)
+        self.k_folder=StratifiedKFold()
+        return 
+    def generate_train_valid_dataset(self,train_split=0.8):
+
+        # for train_idx,valid_idx in self.k_folder.split(self.img_list):
+        train_idx,valid_idx=train_test_split(np.arange(self.img_list.shape[0]),train_size=train_split,stratify=self.label_list[:])
+        yield DogCatDataset(self.img_list[train_idx],self.label_list[train_idx],self.transform_dict.get('train',None)),DogCatDataset(self.img_list[valid_idx],self.label_list[valid_idx],self.transform_dict.get('valid',None))
 
 if (__name__ == '__main__'):
     # transform_dict={'train':get_torch_transform_pipeline(224,224,True),'valid':get_torch_transform_pipeline(224,224,False)}

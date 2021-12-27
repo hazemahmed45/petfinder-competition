@@ -20,7 +20,7 @@ import numpy as np
 
 # from torchsummary import summary
 
-SEED=999
+SEED=1
 np.random.seed(SEED)
 random.seed(SEED)
 torch.manual_seed(SEED)

@@ -59,8 +59,8 @@ class BinAccuracy(Metric):
         self.value=0
         self.num=0
 class BinaryAccuracy(Metric):
-    def __init__(self):
-        self.name='BinaryAccuracy'
+    def __init__(self,name='BinaryAccuracy'):
+        self.name=name
         self.value=0
         self.num=0
         return 

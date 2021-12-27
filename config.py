@@ -74,7 +74,7 @@ class Configs():
         self.cur_exp_dir=os.path.join(self.exp_dir,str(self.experiment_num))
         if(not os.path.exists( self.cur_exp_dir)):
             os.mkdir( self.cur_exp_dir)
-        
+        self.is_stoped=False
         self.epochs=10
         self.bin_increment=5
         self.pin_memory=True
@@ -97,6 +97,7 @@ class Configs():
         self.schedular='step'
         self.step_size=10
         self.step_gamma=0.45
+        self.job_type='regression'
     def get_config_dict(self):
         return vars(self)
     def save_config_dict(self):
