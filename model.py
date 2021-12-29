@@ -54,7 +54,7 @@ class SmallMetaBlock(nn.Module):
 class Resnet18Backbone(nn.Module):
     def __init__(self,pretrained=True) -> None:
         super(Resnet18Backbone,self).__init__()
-        self.backbone=create_model('resnet18',pretrained=True,num_classes=0)
+        self.backbone=create_model('resnet18',pretrained=pretrained,num_classes=0)
         self.emb_dim=512
         # self.backbone.fc=Identity()
         return 
@@ -171,31 +171,17 @@ class Resnet18WithConfBarWithSpeciesPawpularityRegressor(nn.Module):
         self.backbone=Resnet18Backbone(True)
         if(backbone_weights is not None):
             self.backbone.load_state_dict(torch.load(backbone_weights))
-        for param in self.backbone.parameters():
-            param.requires_grad = False
+
    
         self.fc_paw=nn.Sequential(
-            nn.Linear(self.backbone.emb_dim,512),
-            nn.Dropout(0.4),
-            nn.Linear(512,512),
-            nn.Dropout(0.5),
-            nn.Linear(512,1),
+            nn.Linear(self.backbone.emb_dim,1),
             nn.SiLU()
             )
         self.fc_conf_bar=nn.Sequential(
-            nn.Linear(self.backbone.emb_dim,512),
-            nn.Dropout(0.4),
-            nn.Linear(512,512),
-            nn.Dropout(0.5),
-            nn.Linear(512,100),
-            nn.SiLU()
+            nn.Linear(self.backbone.emb_dim,100),
             )
         self.fc_species=nn.Sequential(
-            nn.Linear(self.backbone.emb_dim,512),
-            nn.Dropout(0.4),
-            nn.Linear(512,512),
-            nn.Dropout(0.5),
-            nn.Linear(512,1),
+            nn.Linear(self.backbone.emb_dim,1),
             )
         return 
     def forward(self,img_in):
@@ -204,6 +190,28 @@ class Resnet18WithConfBarWithSpeciesPawpularityRegressor(nn.Module):
         out_conf=self.fc_conf_bar(x)
         out_species=self.fc_species(x)
         return out_reg,out_conf,out_species
+    
+class Resnet18WithConfBarWithInvConfBarPawpularityRegressor(nn.Module):
+    def __init__(self,backbone_weights=None) -> None:
+        super(Resnet18WithConfBarWithInvConfBarPawpularityRegressor,self).__init__()
+        self.backbone=Resnet18Backbone(True)
+        if(backbone_weights is not None):
+            self.backbone.load_state_dict(torch.load(backbone_weights))
+            
+        self.fc_conf_bar=nn.Sequential(
+            nn.Linear(self.backbone.emb_dim,100),
+            nn.ReLU()
+            )
+        self.fc_inv_conf_bar=nn.Sequential(
+            nn.Linear(self.backbone.emb_dim,100),
+            nn.ReLU()
+            )
+        return 
+    def forward(self,img_in):
+        x = self.backbone(img_in)
+        out_inv_conf_bar=self.fc_inv_conf_bar(x)
+        out_conf=self.fc_conf_bar(x)
+        return out_conf,out_inv_conf_bar
 class InceptionV3WithMetaWithConfidenceBarPawpularityRegressor(nn.Module):
     def __init__(self,backbone_weights=None) -> None:
         super(InceptionV3WithMetaWithConfidenceBarPawpularityRegressor,self).__init__()

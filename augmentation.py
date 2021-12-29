@@ -1,5 +1,5 @@
 from albumentations import (
-    Compose, ShiftScaleRotate, RandomBrightness, HueSaturationValue, RandomContrast, HorizontalFlip,
+    Compose, ShiftScaleRotate, RandomBrightness, HueSaturationValue, RandomContrast, HorizontalFlip,VerticalFlip,
     Rotate, Resize, Lambda, CLAHE, ColorJitter, RandomBrightnessContrast, GaussianBlur, Blur, MedianBlur,
     GridDistortion, Downscale, ChannelShuffle, Normalize, OneOf, IAAAdditiveGaussianNoise, GaussNoise,
     RandomScale
@@ -51,6 +51,7 @@ def get_transform_pipeline(width, height, is_train=True,prob_range=[0.4,0.6]):
                 RandomScale(p=random.uniform(low=prob_range[0],high=prob_range[1])),#p=0.78)
             ], p=random.uniform(low=prob_range[0],high=prob_range[1])),#0.85),
             HorizontalFlip(p=random.uniform(low=prob_range[0],high=prob_range[1])),#),
+            VerticalFlip(p=random.uniform(low=prob_range[0],high=prob_range[1])),
             GaussNoise(p=random.uniform(low=prob_range[0],high=prob_range[1])),#p=0.67),
             OneOf([
                 Blur(p=random.uniform(low=prob_range[0],high=prob_range[1])),#),

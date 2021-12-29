@@ -220,7 +220,7 @@ def train_confbar_species_regression_loop(model
         loss=0.8*loss_reg+0.1*loss_conf+0.1*loss_species
         if(is_train):
             
-            optimizer.zero_grad(set_to_none=True)
+            optimizer.zero_grad()
             loss.backward()
             optimizer.step()
         running_loss.update(batch_loss=loss)
@@ -233,5 +233,42 @@ def train_confbar_species_regression_loop(model
             rmse_metric.name:rmse_metric.get_value()*100,
             conf_acc_metric.name:conf_acc_metric.get_value(),
             species_metric.name:species_metric.get_value()
+            })
+
+def train_confbar_invconfbar_regression_loop(model
+                            ,dataloader
+                            ,optimizer
+                            ,confidence_criterion
+                            ,inv_confidence_criterion
+                            ,running_loss
+                            ,conf_acc_metric
+                            ,inv_conf_acc_metric
+                            ,e
+                            ,device='cuda',is_train=True):
+    iter_loop=tqdm(enumerate(dataloader),total=len(dataloader))
+    # running_loss=0
+    for ii,(img_batch,conf_label_batch,inv_conf_label_batch) in iter_loop:
+        img_batch=img_batch.to(device)
+        conf_label_batch=conf_label_batch.to(device)
+        inv_conf_label_batch=inv_conf_label_batch.to(device)
+        
+        # print(img_batch.shape,label_batch.shape,meta_batch.shape)
+        output_conf,output_inv_conf=model(img_batch)
+        loss_conf=confidence_criterion(output_conf,conf_label_batch)
+        loss_inv_conf=inv_confidence_criterion(output_inv_conf,inv_conf_label_batch)
+        loss=loss_conf+loss_inv_conf
+        if(is_train):
+            
+            optimizer.zero_grad(set_to_none=True)
+            loss.backward()
+            optimizer.step()
+        running_loss.update(batch_loss=loss)
+        conf_acc_metric.update(y_pred=output_conf,y_true=conf_label_batch)
+        inv_conf_acc_metric.update(y_pred=output_inv_conf,y_true=inv_conf_label_batch)
+        iter_loop.set_description('TRAIN' if is_train else 'VALID'+' LOOP E: '+str(e))
+        iter_loop.set_postfix({
+            running_loss.name:running_loss.get_value(),
+            conf_acc_metric.name:conf_acc_metric.get_value(),
+            inv_conf_acc_metric.name:inv_conf_acc_metric.get_value(),
             })
         
